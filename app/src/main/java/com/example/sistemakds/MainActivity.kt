@@ -6,22 +6,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import java.io.OutputStream
-import java.net.Socket
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var printButton: Button
 
-    private val pedido = Pedido(
-        id = "1234",
-        itens = listOf(
-            ItemPedido("Hamburguer", 2),
-            ItemPedido("Batata Frita", 1),
-            ItemPedido("Coca Cola", 2)
-        )
-    )
+    private lateinit var tcpServer: TcpServer
+
+    private val pedidoList = mutableListOf<Pedido>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,45 +24,42 @@ class MainActivity : AppCompatActivity() {
         printButton = findViewById(R.id.printButton)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = PedidoAdapter(pedido)
+        recyclerView.adapter = PedidoAdapter(pedidoList)
 
         printButton.setOnClickListener {
-            val ipImpressora = "192.168.1.100"
-            val portaImpressora = 9100
-            val dadosImpressao = gerarTextoDoPedido(pedido)
-
-            enviarParaImpressora(ipImpressora, portaImpressora, dadosImpressao)
             Toast.makeText(this, "Pedido enviado para impressão", Toast.LENGTH_SHORT).show()
         }
-    }
 
-    private fun gerarTextoDoPedido(pedido: Pedido): ByteArray {
-        val sb = StringBuilder()
-        sb.append("\u001B@")
-        sb.append("Pedido #${pedido.id}\n")
-        for (item in pedido.itens) {
-            sb.append("${item.nome} - Qtde: ${item.quantidade}\n")
-            if (item.produzido) {
-                sb.append("(Produzido)\n")
+        // Start TCP server to listen for incoming orders
+        tcpServer = TcpServer(port = 9200) { data ->
+            runOnUiThread {
+                // Process received data and update RecyclerView
+                processReceivedData(data)
             }
         }
-        sb.append("\n\n")
-        sb.append("\u001D@\u001Bd2")
-
-        return sb.toString().toByteArray()
+        tcpServer.start()
     }
 
-    private fun enviarParaImpressora(ip: String, porta: Int, dados: ByteArray) {
-        Thread {
-            try {
-                val socket = Socket(ip, porta)
-                val outputStream: OutputStream = socket.getOutputStream()
-                outputStream.write(dados)
-                outputStream.flush()
-                socket.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }.start()
+    private fun processReceivedData(data: String) {
+        // Parse the data and update the RecyclerView
+        val pedido = parsePedido(data)
+        pedidoList.add(pedido)
+        recyclerView.adapter?.notifyDataSetChanged()
+        Toast.makeText(this, "Novo pedido recebido: $data", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun parsePedido(data: String): Pedido {
+        // Implement the parsing logic based on your data format
+        // For this example, we'll assume the data is in a simple format
+        val items = data.split("\n").map {
+            val parts = it.split(" - ")
+            ItemPedido(parts[0], parts[1].toInt())
+        }
+        return Pedido(id = "1234", itens = items)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tcpServer.stop()
     }
 }

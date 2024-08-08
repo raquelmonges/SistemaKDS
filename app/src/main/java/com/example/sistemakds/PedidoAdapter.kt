@@ -7,7 +7,7 @@ import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class PedidoAdapter(private val pedido: Pedido) :
+class PedidoAdapter(private val pedidos: List<Pedido>) :
     RecyclerView.Adapter<PedidoAdapter.ItemViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
@@ -16,21 +16,15 @@ class PedidoAdapter(private val pedido: Pedido) :
     }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
-        val item = pedido.itens[position]
-        holder.itemNome.text = item.nome
-        holder.itemQuantidade.text = "Quantidade: ${item.quantidade}"
-        holder.itemCheckbox.isChecked = item.produzido
-
-        holder.itemCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            item.produzido = isChecked
-        }
+        val pedido = pedidos[position]
+        holder.itemNome.text = pedido.itens.joinToString { it.nome }
+        holder.itemQuantidade.text = pedido.itens.joinToString { "Qtde: ${it.quantidade}" }
     }
 
-    override fun getItemCount(): Int = pedido.itens.size
+    override fun getItemCount(): Int = pedidos.size
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val itemNome: TextView = itemView.findViewById(R.id.itemNome)
         val itemQuantidade: TextView = itemView.findViewById(R.id.itemQuantidade)
-        val itemCheckbox: CheckBox = itemView.findViewById(R.id.itemCheckbox)
     }
 }
